@@ -65,7 +65,10 @@ def add_update_data(data_from_db):
 
     data_from_db['data'] = decode_data_txt(data_from_db['data'])
     name_id = entity_ids[data_from_db['entity']]
-    entity_keys = json.loads(json.dumps(data_from_db['data']['event']['keys'][name_id]), parse_int = str)
+    if data_from_db['entity'] == "Protocol":
+        entity_keys = json.loads(json.dumps(data_from_db['data']['entity']['protocol']['system'][name_id]), parse_int=str)
+    else:
+        entity_keys = json.loads(json.dumps(data_from_db['data']['event']['keys'][name_id]), parse_int = str)
     entity_keys_dict = {name_id: entity_keys}
     fabrikant_data_collection = db[data_from_db['entity']]
     data_from_db.update(entity_keys_dict)
@@ -85,17 +88,18 @@ def add_update_data(data_from_db):
 
 def on_message(channel, method_frame, header_frame, body):
     data_from_queue = ast.literal_eval(body.decode('utf-8'))
-    if 0 <= data_from_queue["event_gid"] % 256 <= 128:
+
+    if 0 <= data_from_queue["event_gid"] % 256 <= 127:
         all_data_from_bi_pe_check = get_data_from_db_firm(mc.MS_BI_PE_1, q.get_data_from_bi_pe_check_1, as_dict=True,
                                                           event_gid_str = add_quotes(data_from_queue["event_gid"]))
     else:
         all_data_from_bi_pe_check = get_data_from_db_firm(mc.MS_BI_PE_2, q.get_data_from_bi_pe_check_2, as_dict=True,
-                                                          event_gid_str=add_quotes(data_from_queue["event_gid"]))
+                                                          event_gid_str = add_quotes(data_from_queue["event_gid"]))
     if all_data_from_bi_pe_check:
         for data_from_db in all_data_from_bi_pe_check:
             add_update_data(data_from_db)
 
-    #channel.basic_ack(delivery_tag=method_frame.delivery_tag)
+    channel.basic_ack(delivery_tag=method_frame.delivery_tag)
 
 connection = pika.BlockingConnection(params)
 channel = connection.channel()
